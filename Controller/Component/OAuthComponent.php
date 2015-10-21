@@ -27,8 +27,10 @@ App::import('Vendor', 'oauth2-php/lib/IOAuth2Storage');
 App::import('Vendor', 'oauth2-php/lib/IOAuth2RefreshTokens');
 App::import('Vendor', 'oauth2-php/lib/IOAuth2GrantUser');
 App::import('Vendor', 'oauth2-php/lib/IOAuth2GrantCode');
-
-class OAuthComponent extends Component implements IOAuth2Storage, IOAuth2RefreshTokens, IOAuth2GrantUser, IOAuth2GrantCode {
+App::import('Vendor', 'oauth2-php/lib/IOAuth2GrantClient');
+App::import('Model', 'OAuth.OAuth2Base');
+	
+class OAuthComponent extends Component implements IOAuth2Storage, IOAuth2RefreshTokens, IOAuth2GrantUser, IOAuth2GrantCode, IOAuth2GrantClient {
 
 /**
  * AccessToken object.
@@ -106,6 +108,14 @@ class OAuthComponent extends Component implements IOAuth2Storage, IOAuth2Refresh
  */
 	public $grantTypes = array('authorization_code', 'refresh_token', 'password');
 
+/*
+ * Extend the basic access to native Apps
+ * Created by Pedro 18/08/2014
+ */	
+	public $extendAccessClientsId;
+	
+	public $extendGrantTypes;
+
 /**
  * OAuth2 Object
  *
@@ -141,7 +151,7 @@ class OAuthComponent extends Component implements IOAuth2Storage, IOAuth2Refresh
  */
 	public function __construct(ComponentCollection $collection, $settings = array()) {
 		parent::__construct($collection, $settings);
-		$this->OAuth2 = new OAuth2($this);
+		$this->OAuth2 = new OAuth2Base($this);
 		$this->AccessToken = ClassRegistry::init(array('class' => 'OAuth.AccessToken', 'alias' => 'AccessToken'));
 		$this->AuthCode = ClassRegistry::init(array('class' => 'OAuth.AuthCode', 'alias' => 'AuthCode'));
 		$this->Client = ClassRegistry::init(array('class' => 'OAuth.Client', 'alias' => 'Client'));
@@ -155,9 +165,15 @@ class OAuthComponent extends Component implements IOAuth2Storage, IOAuth2Refresh
  * @return void
  */
 	public function initialize(Controller $controller) {
+	
+		$configureOAuth = Configure::read('oauth');
+	
 		$this->request = $controller->request;
 		$this->response = $controller->response;
 		$this->_methods = $controller->methods;
+		
+		$this->extendAccessClientsId = $configureOAuth['extendAccessClientsId'];
+		$this->extendGrantTypes = $configureOAuth['extendGrantTypes'];;		
 
 		if (Configure::read('debug') > 0) {
 			Debugger::checkSecurityKeys();
@@ -217,7 +233,8 @@ class OAuthComponent extends Component implements IOAuth2Storage, IOAuth2Refresh
  *
  * @return boolean true if carrying valid token, false if not
  */
-	public function isAuthorized() {
+	public function isAuthorized($redirect=true) {
+		$this->redirect = $redirect;
 		try {
 			$this->AccessToken->id = $this->getBearerToken();
 			$this->verifyAccessToken($this->AccessToken->id);
@@ -302,10 +319,10 @@ class OAuthComponent extends Component implements IOAuth2Storage, IOAuth2Refresh
 					'foreignKey' => 'user_id'
 					)
 				)
-				));
+			));
 			$token = empty($token) ? $this->getBearerToken() : $token;
 			$data = $this->AccessToken->find('first', array(
-				'conditions' => array('oauth_token' => $token),
+				'conditions' => array('access_token' => $token),
 				'recursive' => 1
 			));
 			if (!$data) {
@@ -345,6 +362,68 @@ class OAuthComponent extends Component implements IOAuth2Storage, IOAuth2Refresh
 			$this->RefreshToken->deleteAll(array('user_id' => $user_id), false);
 		}
 	}
+	
+/**
+ * Convenience function to invalidate all or single expired tokens
+ *
+ * @param int $user_id
+ * @param string $token
+ */
+	public function invalidateExpiredUserTokens($user_id = null, $token = null) {
+	
+		$conditionAccessToken = array();
+		$conditionRefreshToken = array();
+		
+		if($token) {
+			$conditionAccessToken['access_token'] = $token;
+			$conditionRefreshToken['refresh_token'] = $token;
+		}
+		
+		if($user_id) {
+			$conditionAccessToken['user_id'] = $user_id;
+			$conditionRefreshToken['user_id'] = $user_id;
+		}
+		
+		$conditionAccessToken['expires <= '] = time();
+		$conditionRefreshToken['expires <= '] = time();
+		
+		$this->AccessToken->deleteAll($conditionAccessToken, false);
+		$this->RefreshToken->deleteAll($conditionRefreshToken, false);
+		
+	}
+	
+/**
+ * Convenience function to get current access token using user_id and client_id and client_secret
+ *
+ * @param int $user_id
+ * @param string $client_id
+ * @param string $client_secret
+ */
+	public function getCurrentUserAccessToken($user_id, $client_id, $client_secret = null) {
+		
+		$conditions = array('user_id' => $user_id, 'client_id' => $client_id);
+		
+		if ($client_secret) {
+			$conditions['client_secret'] = $client_secret;
+		}
+		
+		$token = $this->AccessToken->find('first', array(
+			'conditions' => $conditions,
+			'recursive' => -1
+		));
+		
+		if ($token) {
+		
+			if($token["expires"] < time()) {
+				
+			}
+		
+			return $token['AccessToken'];
+		};
+		
+		return false;
+		
+	}
 
 /**
  * Fakes the OAuth2.php vendor class extension for variables
@@ -375,7 +454,7 @@ class OAuthComponent extends Component implements IOAuth2Storage, IOAuth2Refresh
 			try {
 				return call_user_func_array(array($this->OAuth2, $name), $arguments);
 			} catch (Exception $e) {
-				if (method_exists($e, 'sendHttpResponse')) {
+				if (method_exists($e, 'sendHttpResponse') && (!isset($this->redirect) || $this->redirect)) {
 					$e->sendHttpResponse();
 				}
 				throw $e;
@@ -437,12 +516,12 @@ class OAuthComponent extends Component implements IOAuth2Storage, IOAuth2Refresh
  *
  * @see IOAuth2Storage::getAccessToken().
  *
- * @param string $oauth_token
+ * @param string $access_token
  * @return mixed AccessToken array if valid, null if not
  */
-	public function getAccessToken($oauth_token) {
+	public function getAccessToken($access_token) {
 		$accessToken = $this->AccessToken->find('first', array(
-			'conditions' => array('oauth_token' => $oauth_token),
+			'conditions' => array('access_token' => $access_token),
 			'recursive' => -1,
 		));
 		if ($accessToken) {
@@ -456,16 +535,16 @@ class OAuthComponent extends Component implements IOAuth2Storage, IOAuth2Refresh
  *
  * @see IOAuth2Storage::setAccessToken().
  *
- * @param string $oauth_token
+ * @param string $access_token
  * @param string $client_id
  * @param int $user_id
  * @param string $expires
  * @param string $scope
  * @return boolean true if successfull, false if failed
  */
-	public function setAccessToken($oauth_token, $client_id, $user_id, $expires, $scope = null) {
+	public function setAccessToken($access_token, $client_id, $user_id, $expires, $scope = null) {
 		$data = array(
-			'oauth_token' => $oauth_token,
+			'access_token' => $access_token,
 			'client_id' => $client_id,
 			'user_id' => $user_id,
 			'expires' => $expires,
@@ -485,9 +564,27 @@ class OAuthComponent extends Component implements IOAuth2Storage, IOAuth2Refresh
  * @return boolean If grant type is availiable to client
  */
 	public function checkRestrictedGrantType($client_id, $grant_type) {
+	
+		if(in_array($client_id, $this->extendAccessClientsId) && in_array($grant_type, $this->extendGrantTypes)) {
+			return true;
+		}
+	
 		return in_array($grant_type, $this->grantTypes);
 	}
 
+/**
+ * Partial implementation, just checks globally avaliable grant types
+ *
+ * @see IOAuth2Storage::checkRestrictedGrantType()
+ *
+ * @param string $client_id
+ * @param string $grant_type
+ * @return boolean If grant type is availiable to client
+ */
+	public function checkClientCredentialsGrant($client_id, $client_secret) {
+		return $this->checkClientCredentials($client_id, $client_secret);
+	}
+	
 /**
  * Grant type: refresh_token
  *
@@ -608,6 +705,7 @@ class OAuthComponent extends Component implements IOAuth2Storage, IOAuth2Refresh
 			'scope' => $scope
 		);
 		$this->AuthCode->create();
+		
 		return $this->AuthCode->save(array('AuthCode' => $data));
 	}
 }

@@ -12,6 +12,9 @@ App::uses('String', 'Utility');
  */
 class Client extends OAuthAppModel {
 
+	public $name = 'Client';
+	public $useTable = 'clients';
+	
 /**
  * Primary key field
  *
@@ -54,6 +57,7 @@ class Client extends OAuthAppModel {
 		),
 	);
 
+/*
 	public $actsAs = array(
 		'OAuth.HashedField' => array(
 			'fields' => array(
@@ -61,6 +65,7 @@ class Client extends OAuthAppModel {
 			),
 		),
 	);
+*/
 
 /**
  * hasMany associations

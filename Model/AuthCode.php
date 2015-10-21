@@ -10,6 +10,9 @@ App::uses('OAuthAppModel', 'OAuth.Model');
  */
 class AuthCode extends OAuthAppModel {
 
+	public $name = 'AuthCode';
+	public $useTable = 'auth_codes';
+
 /**
  * Primary key field
  *
@@ -60,11 +63,13 @@ class AuthCode extends OAuthAppModel {
 		),
 	);
 
+/*
 	public $actsAs = array(
 		'OAuth.HashedField' => array(
 			'fields' => 'code',
 		),
 	);
+*/
 
 /**
  * belongsTo associations

@@ -51,6 +51,7 @@ class HashedFieldBehavior extends ModelBehavior {
 				$queryField = $escapeField;
 			}
 			if (isset($queryField)) {
+				var_export($queryField);
 				$data = $conditions[$queryField];
 				$conditions[$queryField] = Security::hash($data, null, true);
 			}

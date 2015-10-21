@@ -18,7 +18,18 @@ App::uses('OAuthAppController', 'OAuth.Controller');
  */
 class OAuthController extends OAuthAppController {
 
-	public $components = array('OAuth.OAuth', 'Auth', 'Session', 'Security');
+	public $components = array(
+		'OAuth.OAuth', 
+		'Auth' => array(
+			'authenticate' => array(
+				'Form' => array(
+					'fields' => array('username' => 'email')
+				)
+			)
+		), 
+		'Session', 
+		'Security'
+	);
 
 	public $uses = array('Users');
 
@@ -32,7 +43,11 @@ class OAuthController extends OAuthAppController {
  */
 	public function beforeFilter() {
 		parent::beforeFilter();
-		$this->OAuth->authenticate = array('fields' => array('username' => 'email'));
+		
+		$this->OAuth->authenticate = array(
+			'fields' => array('username' => 'email')
+		);
+		
 		$this->Auth->allow($this->OAuth->allowedActions);
 		$this->Security->blackHoleCallback = 'blackHole';
 	}
@@ -96,7 +111,9 @@ class OAuthController extends OAuthAppController {
  *
  */
 	public function login () {
+	
 		$OAuthParams = $this->OAuth->getAuthorizeParams();
+	
 		if ($this->request->is('post')) {
 			$this->validateRequest();
 
@@ -114,7 +131,9 @@ class OAuthController extends OAuthAppController {
 				$this->Session->setFlash(__('Username or password is incorrect'), 'default', array(), 'auth');
 			}
 		}
+	
 		$this->set(compact('OAuthParams'));
+	
 	}
 
 /**

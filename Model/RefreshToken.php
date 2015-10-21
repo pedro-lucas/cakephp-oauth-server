@@ -10,6 +10,9 @@ App::uses('OAuthAppModel', 'OAuth.Model');
  */
 class RefreshToken extends OAuthAppModel {
 
+	public $name = 'RefreshToken';
+	public $useTable = 'refresh_tokens';
+	
 /**
  * Primary key field
  *
@@ -55,11 +58,13 @@ class RefreshToken extends OAuthAppModel {
 		),
 	);
 
+/*
 	public $actsAs = array(
 		'OAuth.HashedField' => array(
 			'fields' => 'refresh_token',
 		),
 	);
+*/
 
 /**
  * belongsTo associations
