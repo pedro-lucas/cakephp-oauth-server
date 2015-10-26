@@ -35,7 +35,7 @@ class AuthCode extends OAuthAppModel {
 	public $validate = array(
 		'code' => array(
 			'notempty' => array(
-				'rule' => array('notempty'),
+				'rule' => array('notblank'),
 			),
 			'isUnique' => array(
 				'rule' => array('isUnique'),
@@ -43,17 +43,17 @@ class AuthCode extends OAuthAppModel {
 		),
 		'client_id' => array(
 			'notempty' => array(
-				'rule' => array('notempty'),
+				'rule' => array('notblank'),
 			),
 		),
 		'user_id' => array(
 			'notempty' => array(
-				'rule' => array('notempty'),
+				'rule' => array('notblank'),
 			),
 		),
 		'redirect_uri' => array(
 			'notempty' => array(
-				'rule' => array('notempty'),
+				'rule' => array('notblank'),
 			),
 		),
 		'expires' => array(

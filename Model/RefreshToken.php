@@ -35,7 +35,7 @@ class RefreshToken extends OAuthAppModel {
 	public $validate = array(
 		'refresh_token' => array(
 			'notempty' => array(
-				'rule' => array('notempty'),
+				'rule' => array('notblank'),
 			),
 			'isUnique' => array(
 				'rule' => array('isUnique'),
@@ -43,12 +43,12 @@ class RefreshToken extends OAuthAppModel {
 		),
 		'client_id' => array(
 			'notempty' => array(
-				'rule' => array('notempty'),
+				'rule' => array('notblank'),
 			),
 		),
 		'user_id' => array(
 			'notempty' => array(
-				'rule' => array('notempty'),
+				'rule' => array('notblank'),
 			),
 		),
 		'expires' => array(
