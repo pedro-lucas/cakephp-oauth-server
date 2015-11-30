@@ -1,5 +1,5 @@
 {
-  "name" : "thomseddon/cakephp-oauth-server",
+  "name" : "pedro-lucas/cakephp-oauth-server",
   "description" : "CakePHP OAuth2 Server Plugin",
   "type" : "cakephp-plugin",
   "authors" : [{
@@ -20,10 +20,16 @@
   "license" : [
     "MIT"
   ],
+  "repositories": [
+        {
+            "url": "https://github.com/pedro-lucas/oauth2-php.git",
+            "type": "git"
+        }
+  ],
   "require" : {
     "composer/installers" : "*",
     "php" : ">=5.3.0",
-    "thomseddon/oauth2-php": "dev-master"
+    "pedro-lucas/oauth2-php": "0.*"
   },
   "support" : {
     "forum" : "http://stackoverflow.com/tags/cakephp",
